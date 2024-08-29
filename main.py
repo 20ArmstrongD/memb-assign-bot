@@ -67,7 +67,7 @@ async def on_member_update(before, after):
                 break
 
 # Slash command: Promote a member
-@bot.slash_command(guild_ids=[GUILD_ID], description="Promote a member")
+@bot.add_command(guild_ids=[GUILD_ID], description="Promote a member")
 async def promote(ctx, member: discord.Member, role: discord.Role):
     admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
     if admin_role in ctx.author.roles:
@@ -79,7 +79,7 @@ async def promote(ctx, member: discord.Member, role: discord.Role):
         await ctx.send("You don't have permission to use this command.", ephemeral=True)
 
 # Slash command: Demote a member
-@bot.slash_command(guild_ids=[GUILD_ID], description="Demote a member")
+@bot.add_command(guild_ids=[GUILD_ID], description="Demote a member")
 async def demote(ctx, member: discord.Member, role: discord.Role):
     admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
     if admin_role in ctx.author.roles:
