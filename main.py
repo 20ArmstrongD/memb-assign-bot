@@ -4,9 +4,13 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file located in the 'environment' folder
-load_dotenv(dotenv_path='enviormental/.env')  #the new path for the .env file
+load_dotenv(dotenv_path='enviormental/.env')  # Ensure this path is correct
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 GUILD_ID = int(os.getenv('GUILD_ID'))
+
+# Check if GUILD_ID is correctly loaded
+if GUILD_ID is None:
+    raise ValueError("GUILD_ID is not set in the .env file.")
 
 # Initialize bot with necessary intents
 intents = discord.Intents.default()
@@ -57,17 +61,20 @@ async def on_member_update(before, after):
     
     # Optional: Check if a member has changed roles (promoted or demoted)
     if before.roles != after.roles:
+        general_channel = discord.utils.get(after.guild.text_channels, name="general")
         for role in after.roles:
             if role not in before.roles:  # Role was added
-                await general_channel.send(f"{after.display_name} has been promoted to {role.name}.")
+                if general_channel:
+                    await general_channel.send(f"{after.display_name} has been promoted to {role.name}.")
                 break
         for role in before.roles:
             if role not in after.roles:  # Role was removed
-                await general_channel.send(f"{after.display_name} has been demoted to {role.name}.")
+                if general_channel:
+                    await general_channel.send(f"{after.display_name} has been demoted to {role.name}.")
                 break
 
 # Slash command: Promote a member
-@bot.add_command(guild_ids=[GUILD_ID], description="Promote a member")
+@bot.slash_command(guild_ids=[GUILD_ID], description="Promote a member")
 async def promote(ctx, member: discord.Member, role: discord.Role):
     admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
     if admin_role in ctx.author.roles:
@@ -75,24 +82,22 @@ async def promote(ctx, member: discord.Member, role: discord.Role):
         general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
         if general_channel:
             await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
+        await ctx.respond(f"{member.display_name} has been promoted to {role.name}.")  # Acknowledge the command
     else:
-        await ctx.send("You don't have permission to use this command.", ephemeral=True)
+        await ctx.respond("You don't have permission to use this command.", ephemeral=True)
 
 # Slash command: Demote a member
-@bot.add_command(guild_ids=[GUILD_ID], description="Demote a member")
+@bot.slash_command(guild_ids=[GUILD_ID], description="Demote a member")
 async def demote(ctx, member: discord.Member, role: discord.Role):
     admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
     if admin_role in ctx.author.roles:
-        current_roles = member.roles
-        for r in current_roles:
-            if r.position > role.position:
-                await member.remove_roles(r)
-        await member.add_roles(role)
+        await member.remove_roles(role)
         general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
         if general_channel:
             await general_channel.send(f"{member.display_name} has been demoted to {role.name}.")
+        await ctx.respond(f"{member.display_name} has been demoted to {role.name}.")  # Acknowledge the command
     else:
-        await ctx.send("You don't have permission to use this command.", ephemeral=True)
+        await ctx.respond("You don't have permission to use this command.", ephemeral=True)
 
 # Run the bot using the token from the .env file
 bot.run(TOKEN)

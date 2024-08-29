@@ -150,8 +150,10 @@ def valid_contextj(label: str, pos: int) -> bool:
             joining_type = idnadata.joining_types.get(ord(label[i]))
             if joining_type == ord('T'):
                 continue
-            if joining_type in [ord('L'), ord('D')]:
+            elif joining_type in [ord('L'), ord('D')]:
                 ok = True
+                break
+            else:
                 break
 
         if not ok:
@@ -162,8 +164,10 @@ def valid_contextj(label: str, pos: int) -> bool:
             joining_type = idnadata.joining_types.get(ord(label[i]))
             if joining_type == ord('T'):
                 continue
-            if joining_type in [ord('R'), ord('D')]:
+            elif joining_type in [ord('R'), ord('D')]:
                 ok = True
+                break
+            else:
                 break
         return ok
 
@@ -262,13 +266,8 @@ def alabel(label: str) -> bytes:
     except UnicodeEncodeError:
         pass
 
-    if not label:
-        raise IDNAError('No Input')
-
-    label = str(label)
     check_label(label)
-    label_bytes = _punycode(label)
-    label_bytes = _alabel_prefix + label_bytes
+    label_bytes = _alabel_prefix + _punycode(label)
 
     if not valid_label_length(label_bytes):
         raise IDNAError('Label too long')
