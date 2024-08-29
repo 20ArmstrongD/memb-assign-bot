@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file located in the 'environment' folder
-load_dotenv(dotenv_path='environment/.env')  #the new path for the .env file
+load_dotenv(dotenv_path='enviormental/.env')  #the new path for the .env file
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 GUILD_ID = int(os.getenv('GUILD_ID'))
 

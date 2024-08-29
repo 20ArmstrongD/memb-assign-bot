@@ -1,4 +1,4 @@
-#!/Users/donniearmstrong/code/Discord_Bots/memb-assign-bot/venv/bin/python3.12
+#!/Users/donniearmstrong/code/Discord_Bots/word_counter_bot/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
