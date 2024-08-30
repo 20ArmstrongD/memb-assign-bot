@@ -3,13 +3,14 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import os
 import logging
-from json_logger import log_member_event  # Import the JSON logger
+from datetime import datetime
+from sql_logger import log_request  # Import the SQL logging function
 
-# Configure logging for the bot
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Load environment variables from .env file located in the 'environment' folder
-load_dotenv(dotenv_path='environment/.env')  # Ensure the path is correct
+load_dotenv(dotenv_path='environmental/.env')  # Ensure the path is correct
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
 
@@ -22,118 +23,162 @@ GUILD_ID = int(GUILD_ID)  # Convert after checking for None
 # Initialize bot with necessary intents
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True  # Enable message content intent
 
 # Bot initialization
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Constants for role names
+# Constants for role names and emoji file paths
 GANG_ROLE_NAME = "Gang Members"
-BOT_ROLE_NAME = "Bot"
+STALLIONS_ROLE_NAME = "The Stallions"
+EMOJI_APPROVE = "✅"  # Unicode for the approve emoji
+EMOJI_DENY = "❌"  # Unicode for the deny emoji
 
-def log_event(event_type, member_name, description):
-    """Log events to the console and JSON file."""
-    log_member_event(member_name, event_type, description)
-    logging.info(f'[{event_type}] {member_name}: {description}')
-
-# Event: Bot is ready
+# Connect to the SQLite database on startup
 @bot.event
 async def on_ready():
-    logging.info(f'{bot.user} has connected to Discord!')
+    logging.info(f'Bot is ready and connected as {bot.user}!')
+    logging.info('Connected to the SQLite database: logs.db')  # Log database connection status
 
-# Event: Bot joins a new guild
-@bot.event
-async def on_guild_join(guild):
-    # Check if the Bot role exists, if not create it
-    bot_role = discord.utils.get(guild.roles, name=BOT_ROLE_NAME)
-    if bot_role is None:
-        bot_role = await guild.create_role(name=BOT_ROLE_NAME)  # Create the Bot role
-        log_event('Role Creation', BOT_ROLE_NAME, f'Created {BOT_ROLE_NAME} role in {guild.name}.')
-    
-    # Assign the bot role to itself
-    await guild.me.add_roles(bot_role)
-    log_event('Role Assignment', BOT_ROLE_NAME, f'Assigned {BOT_ROLE_NAME} role to the bot in {guild.name}.')
-
-# Event: New member joins the server
+# Function to assign roles upon member joining
 @bot.event
 async def on_member_join(member):
-    general_channel = discord.utils.get(member.guild.text_channels, name="general")
+    # Get the roles from the guild
+    gang_role = discord.utils.get(member.guild.roles, name=GANG_ROLE_NAME)
+    stallions_role = discord.utils.get(member.guild.roles, name=STALLIONS_ROLE_NAME)
+
+    # Check if the member is a bot
+    if member.bot and stallions_role:
+        await member.add_roles(stallions_role)
+        logging.info(f'Assigned {STALLIONS_ROLE_NAME} role to bot {member.display_name}.')
+    elif gang_role:
+        await member.add_roles(gang_role)
+        logging.info(f'Assigned {GANG_ROLE_NAME} role to {member.display_name}.')
+
+# Function to promote a member
+async def promote_member(interaction, member, role):
+    await member.add_roles(role)
+    general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+    if general_channel:
+        await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
+    await interaction.followup.send(f"{member.display_name} has been promoted to {role.name}.", ephemeral=True)
     
-    if member.bot:
-        # Assign 'Bot' role to new member (if it's a bot)
-        bot_role = discord.utils.get(member.guild.roles, name=BOT_ROLE_NAME)
-        if bot_role and bot_role not in member.roles:  # Check if the role is already assigned
-            await member.add_roles(bot_role)
-            if general_channel:
-                await general_channel.send(f"{member.display_name} has joined as a bot and has been assigned the {BOT_ROLE_NAME} role.")
-            log_event('Role Assignment', member.display_name, f'Assigned {BOT_ROLE_NAME} role upon joining as a bot.')
-        else:
-            logging.info(f'{member.display_name} is already assigned the {BOT_ROLE_NAME} role or the role does not exist.')
-    else:
-        # Assign 'Gang Members' role to new member (if it's a human)
-        gang_role = discord.utils.get(member.guild.roles, name=GANG_ROLE_NAME)
-        if gang_role and gang_role not in member.roles:  # Check if the role is already assigned
-            await member.add_roles(gang_role)
-            if general_channel:
-                await general_channel.send(f"{member.display_name} has joined the server and has been assigned to the {GANG_ROLE_NAME} role.")
-            log_event('Role Assignment', member.display_name, f'Assigned to the {GANG_ROLE_NAME} role upon joining.')
-        else:
-            logging.info(f'{member.display_name} is already assigned the {GANG_ROLE_NAME} role or the role does not exist.')
-
-# Event: Member updates (for checking bot role assignment)
-@bot.event
-async def on_member_update(before, after):
-    general_channel = discord.utils.get(after.guild.text_channels, name="general")
-
-    if after.bot:
-        bot_role = discord.utils.get(after.guild.roles, name=BOT_ROLE_NAME)
-        if bot_role and bot_role not in after.roles:
-            await after.add_roles(bot_role)
-            if general_channel:
-                await general_channel.send(f"{after.display_name} has been assigned the {BOT_ROLE_NAME} role.")
-            log_event('Role Assignment', after.display_name, f'Assigned {BOT_ROLE_NAME} role after being updated.')
-        else:
-            logging.info(f'{after.display_name} is already assigned the {BOT_ROLE_NAME} role.')
-
-    # Optional: Check if a member has changed roles (promoted or demoted)
-    if before.roles != after.roles:
-        for role in after.roles:
-            if role not in before.roles:  # Role was added
-                if general_channel:
-                    await general_channel.send(f"{after.display_name} has been promoted to {role.name}.")
-                log_event('Promotion', after.display_name, f'Promoted to {role.name}.')
-                break
-        for role in before.roles:
-            if role not in after.roles:  # Role was removed
-                if general_channel:
-                    await general_channel.send(f"{after.display_name} has been demoted to {role.name}.")
-                log_event('Demotion', after.display_name, f'Demoted to {role.name}.')
-                break
+    # Log the promotion request
+    log_request(interaction.user.display_name, f"Promoted {member.display_name} to {role.name}", True, interaction.user.display_name)
 
 # Slash command: Promote a member
-@bot.command(guild_ids=[GUILD_ID], description="Promote a member")
-async def promote(ctx, member: discord.Member, role: discord.Role):
-    admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
-    if admin_role in ctx.author.roles:
-        await member.add_roles(role)
-        general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
-        if general_channel:
-            await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
-        await ctx.respond(f"{member.display_name} has been promoted to {role.name}.")  # Acknowledge the command
-        log_event('Promotion', member.display_name, f'Promoted to {role.name} by {ctx.author.display_name}.')
+@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="promote", description="Request to promote a member")
+async def promote(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
+    await interaction.response.defer()
+    admin_role = discord.utils.get(interaction.guild.roles, name="Admin")
+
+    # Check if the user is an admin
+    if admin_role in interaction.user.roles:
+        await promote_member(interaction, member, role)
+        logging.info(f'{interaction.user.display_name} aka: Admin promoted {member.display_name} to {role.name}.')
+        log_request(interaction.user.display_name, f"Promoted {member.display_name} to {role.name}", True, interaction.user.display_name)
     else:
-        await ctx.respond("You don't have permission to use this command.", ephemeral=True)
-        logging.warning(f'{ctx.author.display_name} attempted to promote {member.display_name} without permission.')
+        # Notify admins for approval
+        admins = [admin for admin in interaction.guild.members if admin_role in admin.roles]
+        if admins:
+            admin_mentions = ', '.join(admin.mention for admin in admins)
+
+            # Send the approval request message to the paddys-pub channel
+            general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+            if general_channel:
+                try:
+                    approval_message = await general_channel.send(
+                        f"{admin_mentions}, {interaction.user.mention} is requesting to promote {member.display_name} to {role.name}. "
+                        f"React with {EMOJI_APPROVE} to approve or {EMOJI_DENY} to deny."
+                    )
+
+                    def check(reaction, user):
+                        return user in admins and reaction.message.id == approval_message.id and str(reaction.emoji) in [EMOJI_APPROVE, EMOJI_DENY]
+
+                    # Wait for a reaction from admins
+                    reaction, user = await bot.wait_for('reaction_add', check=check)
+
+                    if str(reaction.emoji) == EMOJI_APPROVE:
+                        await promote_member(interaction, member, role)
+                        logging.info(f'{user.display_name} approved promotion of {member.display_name} to {role.name}.')
+                        log_request(user.display_name, f"Approved promotion of {member.display_name} to {role.name}", True, user.display_name)
+                    else:
+                        await interaction.followup.send(f"Promotion of {member.display_name} to {role.name} has been denied.", ephemeral=True)
+                        logging.info(f'{user.display_name} denied promotion of {member.display_name} to {role.name}.')
+                        log_request(user.display_name, f"Denied promotion of {member.display_name} to {role.name}", False, user.display_name)
+                except Exception as e:
+                    logging.error(f"Error sending approval message: {e}")
+                    await interaction.followup.send("There was an error processing the approval request.", ephemeral=True)
+            else:
+                await interaction.followup.send("Could not find the paddys-pub channel.", ephemeral=True)
+        else:
+            await interaction.followup.send("No Admins found to approve the request.", ephemeral=True)
+
+# Function to demote a member
+async def demote_member(interaction, member, role):
+    await member.remove_roles(role)
+    general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+    if general_channel:
+        await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
+    await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+    
+    # Log the demotion request
+    log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
 
 # Slash command: Demote a member
-@bot.command(guild_ids=[GUILD_ID], description="Demote a member")
-async def demote(ctx, member: discord.Member, role: discord.Role):
-    admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
-    if admin_role in ctx.author.roles:
-        await member.remove_roles(role)
-        general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
-        if general_channel:
-            await general_channel.send(f"{member.display_name} has been demoted to {role.name}.")
-        await ctx.respond(f"{member.display_name} has been demoted to {role.name}.")  # Acknowledge the command
-        log_event('Demotion', member.display_name, f'Demoted to {role.name} by {ctx.author.display_name}.')
+@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="demote", description="Request to demote a member")
+async def demote(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
+    await interaction.response.defer()
+    admin_role = discord.utils.get(interaction.guild.roles, name="Admin")
+
+    # Check if the user is an admin
+    if admin_role in interaction.user.roles:
+        await demote_member(interaction, member, role)
+        logging.info(f'{interaction.user.display_name} aka: Admin just demoted {member.display_name} from {role.name}.')
+        log_request(interaction.user.display_name, f" just demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
     else:
-        await ctx.respond("You don't have permission to use this command.", ephemeral=True)
+        # Notify admins for approval
+        admins = [admin for admin in interaction.guild.members if admin_role in admin.roles]
+        if admins:
+            admin_mentions = ', '.join(admin.mention for admin in admins)
+
+            # Send the approval request message to the paddys-pub channel
+            general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+            if general_channel:
+                try:
+                    approval_message = await general_channel.send(
+                        f"{admin_mentions}, {interaction.user.mention} is requesting to demote {member.display_name} from {role.name}. "
+                        f"React with {EMOJI_APPROVE} to approve or {EMOJI_DENY} to deny."
+                    )
+
+                    def check(reaction, user):
+                        return user in admins and reaction.message.id == approval_message.id and str(reaction.emoji) in [EMOJI_APPROVE, EMOJI_DENY]
+
+                    # Wait for a reaction from admins
+                    reaction, user = await bot.wait_for('reaction_add', check=check)
+
+                    if str(reaction.emoji) == EMOJI_APPROVE:
+                        await demote_member(interaction, member, role)
+                        logging.info(f'{user.display_name} approved demotion of {member.display_name} from {role.name}.')
+                        log_request(user.display_name, f"Approved demotion of {member.display_name} from {role.name}", True, user.display_name)
+                    else:
+                        await interaction.followup.send(f"Demotion of {member.display_name} from {role.name} has been denied.", ephemeral=True)
+                        logging.info(f'{user.display_name} denied demotion of {member.display_name} from {role.name}.')
+                        log_request(user.display_name, f"Denied demotion of {member.display_name} from {role.name}", False, user.display_name)
+                except Exception as e:
+                    logging.error(f"Error sending approval message: {e}")
+                    await interaction.followup.send("There was an error processing the approval request.", ephemeral=True)
+            else:
+                await interaction.followup.send("Could not find the paddys-pub channel.", ephemeral=True)
+        else:
+            await interaction.followup.send("No Admins found to approve the request.", ephemeral=True)
+
+# Log registration of slash commands
+@bot.event
+async def on_connect():
+    logging.info("Bot connected to Discord API.")
+    registered_commands = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+    logging.info(f"Slash commands registered: {', '.join([cmd.name for cmd in registered_commands])}")
+
+# Run the bot using the token from the .env file
+bot.run(TOKEN)
