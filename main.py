@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 import os
 import logging
 from datetime import datetime
-from sql_logger import log_request  # Import the SQL logging function
+from sql_logger import log_request, DATABASE_PATH  # Import the SQL logging function
+import random 
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,6 +32,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Constants for role names and emoji file paths
 GANG_ROLE_NAME = "Gang Members"
 STALLIONS_ROLE_NAME = "The Stallions"
+BOTS_ROLE_NAME = "Bots"
 EMOJI_APPROVE = "✅"  # Unicode for the approve emoji
 EMOJI_DENY = "❌"  # Unicode for the deny emoji
 
@@ -38,36 +40,145 @@ EMOJI_DENY = "❌"  # Unicode for the deny emoji
 @bot.event
 async def on_ready():
     logging.info(f'Bot is ready and connected as {bot.user}!')
-    logging.info('Connected to the SQLite database: logs.db')  # Log database connection status
+    logging.info(f'Connected to the SQLite database: {DATABASE_PATH}')  # Log database connection status
 
-# Function to assign roles upon member joining
+    for guild in bot.guilds:
+        logging.info(f'Checking role assignment in guild: {guild.name} (ID: {guild.id})')
+
+        # Get the bot's member object
+        bot_member = guild.me
+
+        # Find the "The Stallions" role
+        stallions_role = discord.utils.get(guild.roles, name=STALLIONS_ROLE_NAME)
+
+        if stallions_role:
+            logging.info(f"Found {STALLIONS_ROLE_NAME} role in {guild.name}.")
+
+            # Check if the bot already has the role
+            if stallions_role in bot_member.roles:
+                logging.info(f'Bot is already assigned to the {STALLIONS_ROLE_NAME} role in {guild.name}.')
+            else:
+                # Try to assign the role to the bot
+                try:
+                    await bot_member.add_roles(stallions_role)
+                    logging.info(f'Successfully assigned {STALLIONS_ROLE_NAME} role to {bot.user.display_name} in {guild.name}.')
+                except discord.Forbidden:
+                    logging.error(f"Failed to assign {STALLIONS_ROLE_NAME} role due to insufficient permissions in {guild.name}.")
+        else:
+            logging.warning(f'{STALLIONS_ROLE_NAME} role not found in {guild.name}.')
+
+@bot.event
+async def on_guild_join(guild):
+    logging.info(f'Joined new guild: {guild.name}')
+
+    # Check if the bot has any roles in the guild
+    if not guild.me.roles or len(guild.me.roles) == 1:  # The bot might only have the @everyone role
+        logging.info(f'Bot has no roles in {guild.name}. Requesting to join The Stallions role.')
+
+        # Get the Admin role and admins in the guild
+        admin_role = discord.utils.get(guild.roles, name="Admin")
+        admins = [member for member in guild.members if admin_role in member.roles]
+
+        if admins:
+            admin_mentions = ', '.join(admin.mention for admin in admins)
+            general_channel = discord.utils.get(guild.text_channels, name="paddys-pub") or guild.system_channel
+            
+            if general_channel:
+                try:
+                    approval_message = await general_channel.send(
+                        f"{admin_mentions}, the bot {guild.me.mention} is requesting to join the {STALLIONS_ROLE_NAME} role. "
+                        f"React with {EMOJI_APPROVE} to approve or {EMOJI_DENY} to deny."
+                    )
+
+                    def check(reaction, user):
+                        return user in admins and reaction.message.id == approval_message.id and str(reaction.emoji) in [EMOJI_APPROVE, EMOJI_DENY]
+
+                    # Wait for a reaction from an admin
+                    reaction, user = await bot.wait_for('reaction_add', check=check)
+
+                    if str(reaction.emoji) == EMOJI_APPROVE:
+                        stallions_role = discord.utils.get(guild.roles, name=STALLIONS_ROLE_NAME)
+                        if stallions_role:
+                            await guild.me.add_roles(stallions_role)
+                            logging.info(f'Successfully assigned The Stallions role to the bot in {guild.name}.')
+                        else:
+                            logging.error(f'The Stallions role does not exist in {guild.name}.')
+                    else:
+                        logging.info(f'{user.display_name} denied the bot\'s request to join The Stallions role in {guild.name}.')
+                except Exception as e:
+                    logging.error(f"Error sending approval message: {e}")
+            else:
+                logging.error(f"Could not find a suitable channel to send the approval request in {guild.name}.")
+        else:
+            logging.error(f"No Admins found in {guild.name} to approve the request.")
+    else:
+        logging.info(f'Bot is already assigned to a role in {guild.name}.')
+
+# Define separate arrays of welcome messages for members and bots
+WELCOME_MESSAGES_MEMBERS = [
+    "Welcome to the server, {member}! You have been assigned the role of {role}!",
+    "Hey {member}, welcome aboard! Enjoy your stay as a {role}!",
+    "Greetings {member}! Hope you have a great time as a {role} in our community!",
+    "Welcome, {member}! You are now part of the {role} team!",
+    "Hello {member}! We're excited to have you join us as a {role}!"
+]
+
+WELCOME_MESSAGES_BOTS = [
+    "Welcome, bot {member}! You have been assigned the role of {role}!",
+    "Hello, bot {member}! Enjoy your time in the server as a {role}!",
+    "Hey there, bot {member}! Glad to have you join us as a {role}!",
+    "Welcome, {member}! You are now part of the bot squad with the role of {role}!",
+    "Greetings, bot {member}! Hope you find your role as a {role} enjoyable!"
+]
+
 @bot.event
 async def on_member_join(member):
     # Get the roles from the guild
     gang_role = discord.utils.get(member.guild.roles, name=GANG_ROLE_NAME)
     stallions_role = discord.utils.get(member.guild.roles, name=STALLIONS_ROLE_NAME)
 
-    # Check if the member is a bot
+    # Initialize role_assigned
+    role_assigned = "No specific role assigned."
+
+    # Assign the appropriate role based on whether the member is a bot or a regular user
     if member.bot and stallions_role:
         await member.add_roles(stallions_role)
+        role_assigned = stallions_role.name
         logging.info(f'Assigned {STALLIONS_ROLE_NAME} role to bot {member.display_name}.')
+        
+        # Choose a welcome message for bots
+        welcome_message = random.choice(WELCOME_MESSAGES_BOTS).format(member=member.display_name, role=role_assigned)
     elif gang_role:
         await member.add_roles(gang_role)
+        role_assigned = gang_role.name
         logging.info(f'Assigned {GANG_ROLE_NAME} role to {member.display_name}.')
+        
+        # Choose a welcome message for members
+        welcome_message = random.choice(WELCOME_MESSAGES_MEMBERS).format(member=member.display_name, role=role_assigned)
+    else:
+        logging.warning(f'No specific role assigned to {member.display_name}.')
+
+    # Send the welcome message to the paddys-pub channel
+    general_channel = discord.utils.get(member.guild.text_channels, name="paddys-pub")
+    if general_channel:
+        await general_channel.send(welcome_message)
 
 # Function to promote a member
 async def promote_member(interaction, member, role):
     await member.add_roles(role)
-    general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
-    if general_channel:
-        await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
     await interaction.followup.send(f"{member.display_name} has been promoted to {role.name}.", ephemeral=True)
+    
+    #can add this back in but this is what causes the duplicate message
+    # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+    # if general_channel:
+    #     await interaction.followup.send(f"{member.display_name} has been promoted to {role.name}.", ephemeral=True)
+    #     await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
     
     # Log the promotion request
     log_request(interaction.user.display_name, f"Promoted {member.display_name} to {role.name}", True, interaction.user.display_name)
 
 # Slash command: Promote a member
-@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="promote", description="Request to promote a member")
+@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="promote", description="Request to promote a <member> from a <role>")
 async def promote(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     await interaction.response.defer()
     admin_role = discord.utils.get(interaction.guild.roles, name="Admin")
@@ -117,16 +228,18 @@ async def promote(interaction: discord.Interaction, member: discord.Member, role
 # Function to demote a member
 async def demote_member(interaction, member, role):
     await member.remove_roles(role)
-    general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
-    if general_channel:
-        await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+    #can add this back in but this is what causes the duplicate message
+    # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+    # if general_channel:
+    #     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+    #     await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
     
     # Log the demotion request
     log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
 
 # Slash command: Demote a member
-@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="demote", description="Request to demote a member")
+@bot.tree.command(guild=discord.Object(id=GUILD_ID), name="demote", description="Request to demote a <member> from <role>")
 async def demote(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     await interaction.response.defer()
     admin_role = discord.utils.get(interaction.guild.roles, name="Admin")
