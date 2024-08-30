@@ -4,37 +4,37 @@ from dotenv import load_dotenv
 import os
 import logging
 from datetime import datetime
-from sql_logger import log_request, DATABASE_PATH  # Import the SQL logging function
+from sql_logger import log_request, DATABASE_PATH  #
 import random 
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Load environment variables from .env file located in the 'environment' folder
-load_dotenv(dotenv_path='environmental/.env')  # Ensure the path is correct
+# Load environment variables from .env file located in the 'environmental' folder
+load_dotenv(dotenv_path='environmental/.env')  
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
 
-# Check if GUILD_ID is correctly loaded
+# Check if GUILD_ID is  loaded
 if GUILD_ID is None:
     raise ValueError("GUILD_ID is not set in the .env file.")
 
-GUILD_ID = int(GUILD_ID)  # Convert after checking for None
+GUILD_ID = int(GUILD_ID)  # Convert after checking 
 
-# Initialize bot with necessary intents
+# Initialize bot with intents
 intents = discord.Intents.default()
 intents.members = True
-intents.message_content = True  # Enable message content intent
+intents.message_content = True  
 
 # Bot initialization
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Constants for role names and emoji file paths
+# Variables for role names and emojis
 GANG_ROLE_NAME = "Gang Members"
 STALLIONS_ROLE_NAME = "The Stallions"
 BOTS_ROLE_NAME = "Bots"
-EMOJI_APPROVE = "✅"  # Unicode for the approve emoji
-EMOJI_DENY = "❌"  # Unicode for the deny emoji
+EMOJI_APPROVE = "✅"  
+EMOJI_DENY = "❌"  
 
 # Connect to the SQLite database on startup
 @bot.event
@@ -229,6 +229,7 @@ async def promote(interaction: discord.Interaction, member: discord.Member, role
 async def demote_member(interaction, member, role):
     await member.remove_roles(role)
     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+    
     #can add this back in but this is what causes the duplicate message
     # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
     # if general_channel:
