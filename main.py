@@ -108,7 +108,7 @@ async def on_guild_join(guild):
                 except Exception as e:
                     logging.error(f"Error sending approval message: {e}")
             else:
-                logging.error(f"Could not find a suitable channel to send the approval request in {guild.name}.")
+                logging.error(f"Can't find channel to send the approval request in {guild.name}.")
         else:
             logging.error(f"No Admins found in {guild.name} to approve the request.")
     else:
@@ -249,7 +249,7 @@ async def demote(interaction: discord.Interaction, member: discord.Member, role:
     if admin_role in interaction.user.roles:
         await demote_member(interaction, member, role)
         logging.info(f'{interaction.user.display_name} aka: Admin just demoted {member.display_name} from {role.name}.')
-        log_request(interaction.user.display_name, f" just demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
+        log_request(interaction.user.display_name, f"just demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
     else:
         # Notify admins for approval
         admins = [admin for admin in interaction.guild.members if admin_role in admin.roles]
