@@ -64,6 +64,9 @@ async def on_ready():
                     logging.info(f'Successfully assigned {STALLIONS_ROLE_NAME} role to {bot.user.display_name} in {guild.name}.')
                 except discord.Forbidden:
                     logging.error(f"Failed to assign {STALLIONS_ROLE_NAME} role due to insufficient permissions in {guild.name}.")
+                except discord.HTTPException as e:
+                    logging.error(f"HTTP Exception: {e}")
+
         else:
             logging.warning(f'{STALLIONS_ROLE_NAME} role not found in {guild.name}.')
 
@@ -140,7 +143,6 @@ async def on_member_join(member):
     # Initialize role_assigned
     role_assigned = "No specific role assigned."
 
-    # Assign the appropriate role based on whether the member is a bot or a regular user
     if member.bot and stallions_role:
         await member.add_roles(stallions_role)
         role_assigned = stallions_role.name
@@ -157,6 +159,7 @@ async def on_member_join(member):
         welcome_message = random.choice(WELCOME_MESSAGES_MEMBERS).format(member=member.display_name, role=role_assigned)
     else:
         logging.warning(f'No specific role assigned to {member.display_name}.')
+
 
     # Send the welcome message to the paddys-pub channel
     general_channel = discord.utils.get(member.guild.text_channels, name="paddys-pub")
@@ -227,17 +230,30 @@ async def promote(interaction: discord.Interaction, member: discord.Member, role
 
 # Function to demote a member
 async def demote_member(interaction, member, role):
-    await member.remove_roles(role)
-    await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
-    
-    #can add this back in but this is what causes the duplicate message
-    # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
-    # if general_channel:
-    #     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
-    #     await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
-    
-    # Log the demotion request
-    log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
+    try:
+        await member.remove_roles(role)
+        await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+            # Log the demotion request
+        log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
+        
+        # can add this back in but this is what causes the duplicate message
+        # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+        # if general_channel:
+        #     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
+        #     await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
+        
+        # Log the demotion request
+        log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
+
+    except discord.Forbidden:
+        await interaction.followup.send(f"Insufficient permissions to demote {member.display_name}.", ephemeral=True)
+        # Optionally log the error
+        logging.error(f"Failed to demote {member.display_name} from {role.name} due to insufficient permissions.")
+
+    except discord.HTTPException as e:
+        await interaction.followup.send(f"An error occurred while demoting {member.display_name}.", ephemeral=True)
+        # Optionally log the error
+        logging.error(f"HTTP Exception while demoting {member.display_name} from {role.name}: {e}")
 
 # Slash command: Demote a member
 @bot.tree.command(guild=discord.Object(id=GUILD_ID), name="demote", description="Request to demote a <member> from <role>")
