@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 load_dotenv(dotenv_path='environmental/.env')  
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
+welcome_channel = os.getenv('welcome_channel')
+new_member_channel = os.getenv('new_member_channel')
 
 # Check if GUILD_ID is  loaded
 if GUILD_ID is None:
@@ -84,7 +86,7 @@ async def on_guild_join(guild):
 
         if admins:
             admin_mentions = ', '.join(admin.mention for admin in admins)
-            general_channel = discord.utils.get(guild.text_channels, name="paddys-pub") or guild.system_channel
+            general_channel = discord.utils.get(guild.text_channels, name=new_member_channel) or guild.system_channel
             
             if general_channel:
                 try:
@@ -119,11 +121,11 @@ async def on_guild_join(guild):
 
 # Define separate arrays of welcome messages for members and bots
 WELCOME_MESSAGES_MEMBERS = [
-    "Welcome to the server, {member}! You have been assigned the role of {role}!",
-    "Hey {member}, welcome aboard! Enjoy your stay as a {role}!",
-    "Greetings {member}! Hope you have a great time as a {role} in our community!",
-    "Welcome, {member}! You are now part of the {role} team!",
-    "Hello {member}! We're excited to have you join us as a {role}!"
+    "Welcome to the server, {member}! You have been assigned the role of {role}!\n Please refer to the {welcome_channel} for server layout",
+    "Hey {member}, welcome aboard! Enjoy your stay as a {role}!\n Please refer to the {welcome_channel} for server layout",
+    "Greetings {member}! Hope you have a great time as a {role} in our community\n Please refer to the {welcome_channel} for server layout!",
+    "Welcome, {member}! You are now part of the {role} team!\n Please refer to the {welcome_channel} for server layout",
+    "Hello {member}! We're excited to have you join us as a {role}!\n Please refer to the {welcome_channel} for server layout"
 ]
 
 WELCOME_MESSAGES_BOTS = [
@@ -162,7 +164,7 @@ async def on_member_join(member):
 
 
     # Send the welcome message to the paddys-pub channel
-    general_channel = discord.utils.get(member.guild.text_channels, name="paddys-pub")
+    general_channel = discord.utils.get(member.guild.text_channels, name=new_member_channel)
     if general_channel:
         await general_channel.send(welcome_message)
 
@@ -172,7 +174,7 @@ async def promote_member(interaction, member, role):
     await interaction.followup.send(f"{member.display_name} has been promoted to {role.name}.", ephemeral=True)
     
     #can add this back in but this is what causes the duplicate message
-    # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+    # general_channel = discord.utils.get(interaction.guild.text_channels, name=welcome_channel)
     # if general_channel:
     #     await interaction.followup.send(f"{member.display_name} has been promoted to {role.name}.", ephemeral=True)
     #     await general_channel.send(f"{member.display_name} has been promoted to {role.name}.")
@@ -198,7 +200,7 @@ async def promote(interaction: discord.Interaction, member: discord.Member, role
             admin_mentions = ', '.join(admin.mention for admin in admins)
 
             # Send the approval request message to the paddys-pub channel
-            general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+            general_channel = discord.utils.get(interaction.guild.text_channels, name=new_member_channel)
             if general_channel:
                 try:
                     approval_message = await general_channel.send(
@@ -237,7 +239,7 @@ async def demote_member(interaction, member, role):
         log_request(interaction.user.display_name, f"Demoted {member.display_name} from {role.name}", True, interaction.user.display_name)
         
         # can add this back in but this is what causes the duplicate message
-        # general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+        # general_channel = discord.utils.get(interaction.guild.text_channels, name=welcome_channel)
         # if general_channel:
         #     await interaction.followup.send(f"{member.display_name} has been demoted from {role.name}.", ephemeral=True)
         #     await general_channel.send(f"{member.display_name} has been demoted from {role.name}.")
@@ -273,7 +275,7 @@ async def demote(interaction: discord.Interaction, member: discord.Member, role:
             admin_mentions = ', '.join(admin.mention for admin in admins)
 
             # Send the approval request message to the paddys-pub channel
-            general_channel = discord.utils.get(interaction.guild.text_channels, name="paddys-pub")
+            general_channel = discord.utils.get(interaction.guild.text_channels, name=new_member_channel)
             if general_channel:
                 try:
                     approval_message = await general_channel.send(
