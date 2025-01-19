@@ -86,7 +86,7 @@ async def on_guild_join(guild):
 
         if admins:
             admin_mentions = ', '.join(admin.mention for admin in admins)
-            general_channel = discord.utils.get(guild.text_channels, name="🙋-new-members") or guild.system_channel
+            general_channel = discord.utils.get(guild.text_channels, name="🙌-new-members") or guild.system_channel
             
             if general_channel:
                 try:
@@ -168,7 +168,7 @@ async def on_member_join(member):
         logging.warning(f'No specific role assigned to {member.display_name}.')
 
     # Send the welcome message to the paddys-pub channel
-    general_channel = discord.utils.get(member.guild.text_channels, name="🙋-new-members")
+    general_channel = discord.utils.get(member.guild.text_channels, name="🙌-new-members")
     
     
     if general_channel:
@@ -202,7 +202,7 @@ async def promote(interaction: discord.Interaction, member: discord.Member, role
             admin_mentions = ', '.join(admin.mention for admin in admins)
 
             # Send the approval request message to the paddys-pub channel
-            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙋-new-members")
+            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙌-new-members")
             if general_channel:
                 try:
                     approval_message = await general_channel.send(
@@ -271,7 +271,7 @@ async def demote(interaction: discord.Interaction, member: discord.Member, role:
             admin_mentions = ', '.join(admin.mention for admin in admins)
 
             # Send the approval request message to the paddys-pub channel
-            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙋-new-members")
+            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙌-new-members")
             if general_channel:
                 try:
                     approval_message = await general_channel.send(
