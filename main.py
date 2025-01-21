@@ -271,7 +271,7 @@ async def demote(interaction: discord.Interaction, member: discord.Member, role:
             admin_mentions = ', '.join(admin.mention for admin in admins)
 
             # Send the approval request message to the paddys-pub channel
-            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙌-new-members")
+            general_channel = discord.utils.get(interaction.guild.text_channels, name="🙋-requests")
             if general_channel:
                 try:
                     approval_message = await general_channel.send(
