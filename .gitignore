@@ -1,11 +1,7 @@
 enviormental/
 .env
-<<<<<<< Updated upstream
-pienv/
-=======
 emoji_grab.py
 pivenv/
 env/
 venv/
 src/test.py
->>>>>>> Stashed changes
