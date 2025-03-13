@@ -1,5 +1,7 @@
 enviormental/
 .env
+emoji_grab.py
 pivenv/
 env/
 venv/
+src/test.py

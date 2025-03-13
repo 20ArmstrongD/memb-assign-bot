@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 # Path to the SQLite database
-DATABASE_PATH = 'logs.db'
+DATABASE_PATH = '/home/DiscordPi/code/discord_bots/memb-assign-bot/logs.db'
 
 def connect_db():
     """Establish a connection to the SQLite database."""
