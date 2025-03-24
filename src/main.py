@@ -3,7 +3,6 @@ from discord.ext import commands
 import logging
 import json
 import random
-from commands.elements.sql_logger import DATABASE_PATH
 from commands.elements.config import ( 
     STALLIONS_ROLE_NAME,
     TOKEN,
@@ -14,9 +13,15 @@ from commands.elements.config import (
     welc_msg_memb_path,
     welc_msg_bot_path
 )
+from commands.elements.sql_logger import DATABASE_PATH
+
+
+
 from commands import (
     register_promote_command, 
-    register_demote_command
+    register_demote_command,
+    register_kick_command,
+    
 )
 
 welcome_sent = set()
@@ -24,6 +29,8 @@ welcome_sent = set()
 async def load_commands():
     register_promote_command(bot)
     register_demote_command(bot)
+    register_kick_command(bot)
+    
 
 @bot.event
 async def on_ready():

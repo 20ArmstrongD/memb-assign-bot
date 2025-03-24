@@ -9,8 +9,8 @@ def connect_db():
     conn = sqlite3.connect(DATABASE_PATH)
     return conn
 
-def log_request(username, action, approval_status, approver=None):
-    """Log the request details to the SQLite database."""
+def log_request_promote_demote(username, action, approval_status, approver=None):
+    """Log the request promote/demote details to the SQLite database."""
     conn = connect_db()
     cursor = conn.cursor()
     
@@ -34,6 +34,33 @@ def log_request(username, action, approval_status, approver=None):
         INSERT INTO requests (username, action, approval_status, approver, timestamp)
         VALUES (?, ?, ?, ?, datetime('now'))
     ''', (username, action, approval_status_str, approver))
+    
+    conn.commit()
+    conn.close()
+
+
+def log_request_kick(username, action, requested_by, approved_by=None):
+    """Log the request to kick details to the SQLite database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+                CREATE TABLE IF NOT EXISTS kicks (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   username TEXT NOT NULL,
+                   action TEXT NOT NULL,
+                   requested_by TEXT NOT NULL,
+                   approved_by TEXT,
+                   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+
+    # Insert the new request into the database
+    cursor.execute('''
+        INSERT INTO kicks (username, action, requested_by, approved_by, timestamp)
+        VALUES (?, ?, ?, ?, datetime('now'))
+    ''', (username, action, requested_by, approved_by))
     
     conn.commit()
     conn.close()

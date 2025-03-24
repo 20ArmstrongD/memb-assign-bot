@@ -10,4 +10,4 @@ from .config import (
     welc_msg_bot_path,
     welc_msg_memb_path
     )
-from .sql_logger import DATABASE_PATH, log_request
+from .sql_logger import DATABASE_PATH, log_request_kick, log_request_promote_demote
