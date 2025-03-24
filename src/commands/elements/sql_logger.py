@@ -55,14 +55,12 @@ def log_request_kick(username, action, requested_by, approved_by=None):
         )
     ''')
 
-     # Convert approval_status to 'yes' or 'no'
-    approved_by_status_str = 'yes' if approved_by else 'no'
 
     # Insert the new request into the database
     cursor.execute('''
         INSERT INTO kicks (username, action, requested_by, approved_by, timestamp)
         VALUES (?, ?, ?, ?, datetime('now'))
-    ''', (username, action, requested_by, approved_by_status_str))
+    ''', (username, action, requested_by, approved_by))
     
     conn.commit()
     conn.close()
