@@ -70,6 +70,7 @@ def register_kick_command(bot):
             await approval_message.add_reaction(EMOJI_APPROVE)
             await approval_message.add_reaction(EMOJI_DENY)
 
+
             def check(reaction, user):
                 return user in admins and reaction.message.id == approval_message.id and str(reaction.emoji) in [EMOJI_APPROVE, EMOJI_DENY]
 
